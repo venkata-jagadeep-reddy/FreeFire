@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: freefire-backend
+    env: node
+    build:
+      path: ./backend
+      env: production
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        fromDatabase:
+          name: freefire-db
+          property: connectionString
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: PORT
+        value: 10000
+    plan: free
+    numInstances: 1
+
+databases:
+  - name: freefire-db
+    databaseName: freefire
+    user: freefire_user
+    plan: free
+    ipAllowList:
+      - description: Allow all
+        value: "0.0.0.0/0"
