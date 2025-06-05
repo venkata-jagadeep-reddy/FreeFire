@@ -122,36 +122,60 @@ const Register = () => {
     try {
       // Load Razorpay script if not already loaded
       if (!window.Razorpay) {
+        console.log('Loading Razorpay script...');
         await loadRazorpayScript();
       }
       
+      // Get API URL from environment or use default
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      console.log('Using API URL:', apiUrl);
       
-      // Use the key directly from environment variables
+      // Get Razorpay key from environment variables
       const key = import.meta.env.VITE_RAZORPAY_KEY_ID;
       
       if (!key) {
-        throw new Error('Razorpay key not found. Please check your environment variables.');
+        const errorMsg = 'Razorpay key not found. Please check your environment variables.';
+        console.error(errorMsg);
+        throw new Error(errorMsg);
       }
       
+      console.log('Creating order...');
+      // Create order on the server
       const orderResponse = await fetch(`${apiUrl}/api/payment/create-order`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
       });
-      const order = await orderResponse.json();
       
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create payment order');
+      }
+      
+      const order = await orderResponse.json();
+      console.log('Order created:', order);
+      
+      // Configure Razorpay options
       const options = {
         key: key,
         amount: order.amount,
-        currency: order.currency,
+        currency: order.currency || 'INR',
         name: "FreeFire Tournament",
         description: "Tournament Registration Fee",
         order_id: order.id,
         handler: async function (response) {
+          console.log('Payment response:', response);
+          
           try {
+            // Verify payment with the server
             const verifyResponse = await fetch(`${apiUrl}/api/payment/verify`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
               body: JSON.stringify({
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_order_id: response.razorpay_order_id,
@@ -161,46 +185,71 @@ const Register = () => {
             });
 
             const result = await verifyResponse.json();
+            console.log('Verification result:', result);
 
-            if (result.success) {
-              // Send confirmation email
-              try {
-                await sendConfirmationEmail(formData);
-                alert('Registration and payment successful! Confirmation email sent.');
-                navigate('/success');
-              } catch (emailErr) {
-                console.error('Email sending failed:', emailErr);
-                alert('Registration successful, but failed to send confirmation email.');
-                navigate('/success');
-              }
-            } else {
-              throw new Error(result.message || 'Payment verification failed');
+            if (!verifyResponse.ok || !result.success) {
+              throw new Error(result.error || 'Payment verification failed');
+            }
+
+            // Send confirmation email
+            try {
+              console.log('Sending confirmation email...');
+              await sendConfirmationEmail(formData);
+              console.log('Email sent successfully');
+              alert('Registration and payment successful! Confirmation email sent.');
+              navigate('/success');
+            } catch (emailErr) {
+              console.error('Email sending failed:', emailErr);
+              // Still navigate to success as payment was successful
+              alert('Registration successful, but failed to send confirmation email.');
+              navigate('/success');
             }
           } catch (error) {
-            console.error('Verification error:', error);
-            alert('Payment verification failed. Please contact support.');
+            console.error('Payment verification error:', error);
+            alert(`Payment verification failed: ${error.message}. Please contact support with payment ID: ${response.razorpay_payment_id}`);
           }
         },
         prefill: {
-          name: formData.teamName,
-          email: formData.email,
-          contact: formData.phone1
+          name: formData.teamName || 'Team Leader',
+          email: formData.email || '',
+          contact: formData.phone1 || ''
         },
         theme: {
-          color: "#3399cc"
+          color: "#ff8c00" // Match your site's theme
         },
         modal: {
           ondismiss: function() {
-            alert('Payment window was closed. Please try again.');
+            console.log('Payment window was closed by user');
+            alert('Payment window was closed. Please try again if you wish to complete your registration.');
           }
+        },
+        // Additional error handling
+        "handler.error": function(error) {
+          console.error('Razorpay error:', error);
+          alert(`Payment error: ${error.description || 'Unknown error occurred'}`);
+        },
+        // Disable auto-focus on the first field
+        "modal.escape": true,
+        // Enable retry for failed payments
+        "retry": {
+          "enabled": true,
+          "max_count": 3
         }
       };
       
+      console.log('Opening Razorpay checkout...');
       const rzp = new window.Razorpay(options);
       rzp.open();
+      
+      // Handle payment close event
+      rzp.on('payment.failed', function(response) {
+        console.error('Payment failed:', response.error);
+        alert(`Payment failed: ${response.error.description || 'Unknown error'}`);
+      });
+      
     } catch (error) {
-      console.error('Payment error:', error);
-      alert('Error processing payment. Please try again.');
+      console.error('Payment processing error:', error);
+      alert(`Error: ${error.message || 'Failed to process payment. Please try again.'}`);
       throw error;
     }
   };

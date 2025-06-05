@@ -54,10 +54,30 @@ connectDB();   // fire and forget (server still boots)
 /* ------------------------------------------------------------------ *
  *  Middleware
  * ------------------------------------------------------------------ */
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://freefire-frontend.onrender.com',
+  'https://freefire-frontend.onrender.com/'
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable preflight for all routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
@@ -98,37 +118,71 @@ app.post('/api/payment/create-order', async (req, res) => {
   }
 });
 
-// Verify payment
+// Verify payment and save registration
 app.post('/api/payment/verify', async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, registrationData } = req.body;
-  
-  const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
-  hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
-  const generated_signature = hmac.digest('hex');
-  
-  if (generated_signature === razorpay_signature) {
-    try {
-      // Save registration with payment details
-      const registration = new Registration({
-        ...registrationData,
-        payment: {
-          orderId: razorpay_order_id,
-          paymentId: razorpay_payment_id,
-          signature: razorpay_signature,
-          amount: 50000,
-          status: 'completed',
-          timestamp: new Date()
-        }
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, registrationData } = req.body;
+    
+    // Validate required fields
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required payment parameters' 
       });
-      await registration.save();
-      
-      res.json({ success: true, message: 'Payment verified and registration complete' });
-    } catch (error) {
-      console.error('Registration save error:', error);
-      res.status(500).json({ success: false, error: error.message });
     }
-  } else {
-    res.status(400).json({ success: false, error: 'Invalid payment signature' });
+
+    // Verify payment signature
+    const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    const generated_signature = hmac.digest('hex');
+    
+    if (generated_signature !== razorpay_signature) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid payment signature' 
+      });
+    }
+
+    // If we have registration data, save it
+    if (registrationData && isMongoConnected) {
+      try {
+        const registration = new Registration({
+          ...registrationData,
+          payment: {
+            orderId: razorpay_order_id,
+            paymentId: razorpay_payment_id,
+            signature: razorpay_signature,
+            amount: 50000, // ₹500 in paise
+            currency: 'INR',
+            status: 'completed',
+            timestamp: new Date()
+          },
+          registeredAt: new Date()
+        });
+        
+        await registration.save();
+        console.log('✅ Registration saved successfully');
+      } catch (saveError) {
+        console.error('❌ Registration save error:', saveError);
+        // Don't fail the payment verification if saving to DB fails
+      }
+    }
+    
+    // Return success response
+    res.json({ 
+      success: true, 
+      message: 'Payment verified successfully',
+      paymentId: razorpay_payment_id,
+      orderId: razorpay_order_id
+    });
+    
+  } catch (error) {
+    console.error('❌ Payment verification error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error during payment verification',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
