@@ -76,6 +76,7 @@ const Navbar = () => {
           <NavLink to="/details">Details</NavLink>
           <NavLink to="/rules">Rules</NavLink>
           <NavLink to="/register">Register</NavLink>
+          <NavLink to="/contact">Contact</NavLink>
         </div>
       </div>
     </motion.nav>

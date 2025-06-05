@@ -6,6 +6,8 @@ import Register from './pages/Register';
 import Home from './pages/Home';
 import About from './pages/About';
 import Details from './pages/Details';
+import Contact from './pages/Contact';
+import Success from './pages/Success';
 import ScrollReveal from './components/ScrollReveal';
 import PageContainer from './components/PageContainer';
 import AnimatedCard from './components/AnimatedCard';
@@ -155,6 +157,16 @@ const App = () => {
           <Route path="/register" element={
             <PageTransition>
               <Register />
+            </PageTransition>
+          } />
+          <Route path="/contact" element={
+            <PageTransition>
+              <Contact />
+            </PageTransition>
+          } />
+          <Route path="/success" element={
+            <PageTransition>
+              <Success />
             </PageTransition>
           } />
         </Routes>
