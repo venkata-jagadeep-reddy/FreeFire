@@ -28,16 +28,70 @@ const Home = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             style={{ maxWidth: '800px', margin: '0 auto' }}
           >
-            <h1 style={{
-              fontSize: '3.5rem',
-              marginBottom: '1.5rem',
-              background: 'linear-gradient(90deg, #ff8c00, #ff4500)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 2px 10px rgba(0,0,0,0.2)'
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              marginBottom: '2rem'
             }}>
-              FreeFire Tournament 2025
-            </h1>
+              <div style={{
+                width: '120px',
+                height: '120px',
+                background: 'rgba(255, 140, 0, 0.2)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '1.5rem',
+                border: '3px solid #ff8c00',
+                boxShadow: '0 0 20px rgba(255, 140, 0, 0.4)'
+              }}>
+                <div style={{
+                  width: '100px',
+                  height: '100px',
+                  background: '#ff8c00',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#000',
+                  fontSize: '2.5rem',
+                  fontWeight: 'bold',
+                  fontFamily: 'Arial, sans-serif'
+                }}>
+                  FF
+                </div>
+              </div>
+              <h1 style={{
+                fontSize: '4rem',
+                margin: '0',
+                background: 'linear-gradient(90deg, #ff8c00, #ff4500)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                letterSpacing: '1px',
+                marginBottom: '0.5rem'
+              }}>
+                FreeFire
+              </h1>
+              <h2 style={{
+                fontSize: '1.8rem',
+                color: '#fff',
+                margin: '0',
+                fontWeight: 'normal',
+                letterSpacing: '2px',
+                marginBottom: '0.5rem'
+              }}>
+                TOURNAMENT 2025
+              </h2>
+              <div style={{
+                height: '4px',
+                width: '100px',
+                background: 'linear-gradient(90deg, #ff8c00, #ff4500)',
+                margin: '1.5rem 0',
+                borderRadius: '2px'
+              }}></div>
+            </div>
             <p style={{
               fontSize: '1.25rem',
               marginBottom: '2rem',
